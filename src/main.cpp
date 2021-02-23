@@ -28,9 +28,15 @@ struct scene_environment
 	vec3 light;
 };
 scene_environment scene;
-mesh_drawable ground;
+mesh_drawable table;
 mesh_drawable sphere;
+mesh_drawable pan;
+bool first_time = true;
 
+
+//Parameters
+const vec3 pan_position = {-1,-1,-1};
+const double v_factor = 1.8;
 
 timer_event_periodic timer(0.5f);
 std::vector<particle_structure> particles;
@@ -115,11 +121,13 @@ void emit_particle()
 	static buffer<vec3> const color_lut = {{1,0,0},{0,1,0},{0,0,1},{1,1,0},{1,0,1},{0,1,1}};
 	if (timer.event && user.gui.add_sphere) {
 		float const theta = rand_interval(0, 2*pi);
-		vec3 const v = vec3(1.0f*std::cos(theta), 1.0f*std::sin(theta), 4.0f);
-
+		vec3 v = vec3(1.0f*std::cos(theta), 1.0f*std::sin(theta), 4.0f);
+        //add speed
+		v = v_factor*v;
 		particle_structure particle;
-		particle.p = {0,0,0};
-		particle.r = 0.08f;
+		//starting position
+		particle.p = pan_position;
+		particle.r = 0.09f;
 		particle.c = color_lut[int(rand_interval()*color_lut.size())];
 		particle.v = v;
 		particle.m = 1.0f; //
@@ -144,13 +152,45 @@ void initialize_data()
 	scene.camera.distance_to_center = 2.5f;
 	scene.camera.look_at({4,3,2}, {0,0,0}, {0,0,1});
 
-	sphere = mesh_drawable(mesh_primitive_sphere());
+	//popcorn
+	//sphere = mesh_drawable(mesh_primitive_sphere());
+	mesh popcorn = mesh_load_file_obj("assets/Rock.obj");
+    sphere = mesh_drawable(popcorn);
 
 
-	//second code
-    ground = mesh_drawable(mesh_primitive_quadrangle({-1.5f,-1.5f,0},{-1.5f,1.5f,0},{1.5f,1.5f,0},{1.5f,-1.5f,0}));
-    ground.transform.translate = {0,0,-1};
-    ground.texture = opengl_texture_to_gpu(image_load_png("assets/wood.png"));
+	//Mesh
+    mesh table_m = mesh_load_file_obj("assets/Wood_Table.obj");
+    mesh pan_m = mesh_load_file_obj("assets/pan.obj");
+
+    //rotation
+    mat3 rot = {
+            1.0,0,0,
+            0,float(cos(1.5708)),-1*float(sin(1.5708)),
+            0,float(sin(1.5708)),float(cos(1.5708))
+    };
+    for(int i=0; i<pan_m.position.size(); i++) {
+        pan_m.position.at(i) = rot*pan_m.position.at(i);
+    }
+
+    for(int i=0; i<table_m.position.size(); i++) {
+        table_m.position.at(i) = rot*table_m.position.at(i);
+    }
+
+    //translation
+
+
+    //scaling
+    pan_m.position /=20;
+    table_m.position *= 4;
+
+
+    //mesh_draw
+    pan = mesh_drawable(pan_m);
+    table = mesh_drawable(table_m);
+    table.transform.translate = {-0.5,-0.5,-2.87};
+    pan.transform.translate = pan_position;
+    table.texture = opengl_texture_to_gpu(image_load_png("assets/wood.png"));
+    //pan.texture = opengl_texture_to_gpu(image_load_png("assets/wood.png"));
 }
 
 void display_scene()
@@ -159,13 +199,19 @@ void display_scene()
 	for(size_t k=0; k<N; ++k)
 	{
 		particle_structure const& particle = particles[k];
-		sphere.shading.color = particle.c;
+		sphere.shading.color = {1,1,1};
 		sphere.transform.translate = particle.p;
 		sphere.transform.scale = particle.r;
+		if(first_time){
+            first_time = false;
+            sphere.texture = opengl_texture_to_gpu(image_load_png("assets/b_w.png"));
+		}
 
 		draw(sphere, scene);
 	}
-    draw(ground, scene);
+    draw(table, scene);
+	draw(pan, scene);
+
 }
 
 
