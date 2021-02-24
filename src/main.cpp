@@ -32,7 +32,7 @@ mesh_drawable table;
 mesh_drawable sphere;
 mesh_drawable pan;
 bool first_time = true;
-
+std::vector<mesh_drawable> cups;
 
 //Parameters
 const vec3 pan_position = {-1,-1,-1};
@@ -150,7 +150,7 @@ void initialize_data()
 	user.global_frame = mesh_drawable(mesh_primitive_frame());
 	user.gui.display_frame = false;
 	scene.camera.distance_to_center = 2.5f;
-	scene.camera.look_at({4,3,2}, {0,0,0}, {0,0,1});
+	scene.camera.look_at({5,5,5}, {0,0,0}, {0,0,2});
 
 	//popcorn
 	//sphere = mesh_drawable(mesh_primitive_sphere());
@@ -178,7 +178,6 @@ void initialize_data()
 
     //translation
 
-
     //scaling
     pan_m.position /=20;
     table_m.position *= 4;
@@ -190,7 +189,18 @@ void initialize_data()
     table.transform.translate = {-0.5,-0.5,-2.87};
     pan.transform.translate = pan_position;
     table.texture = opengl_texture_to_gpu(image_load_png("assets/wood.png"));
-    //pan.texture = opengl_texture_to_gpu(image_load_png("assets/wood.png"));
+
+    for(int i=0;i<3;i++){
+	    mesh_drawable cup = mesh_drawable(mesh_primitive_cylinder());
+    	cups.push_back(cup);
+    	cups[i].texture = opengl_texture_to_gpu(image_load_png("assets/cup.png"));
+   	}
+	cups[0].transform.translate = {0.7,0.7,-1};
+	cups[1].transform.translate = {-0.7,0.7,-1};
+	cups[2].transform.translate = {-0.7,-0.7,-1};
+	cups[0].transform.scale = 0.5;
+	cups[1].transform.scale = 0.5;
+	cups[2].transform.scale = 0.5;
 }
 
 void display_scene()
@@ -211,7 +221,8 @@ void display_scene()
 	}
     draw(table, scene);
 	draw(pan, scene);
-
+    for(int i=0;i<cups.size();i++)
+	    draw(cups[i], scene);
 }
 
 
