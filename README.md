@@ -1,9 +1,10 @@
 # Wood-ball-bouncer
 Computer Animation (INF585) project at L'X
 - [X] Smaller balls with popcorn texture
-- [X] More realistic table
-- [ ] Cups on table with possible fluids
-- [ ] Popcorn coming from pan with fire below it or smoke
-- [ ] Maybe add smoke later
-- [ ] Fluids and wind
- 
+- [X] A more realistic table
+- [X] Cups on table
+- [X] Popcorn coming from pan
+- [ ] Adding fluids (SPH) for cups
+- [ ] Developing generic code for obstacles as a structure
+- [ ] Adding fire/smoke
+- [ ] Adding wind force
