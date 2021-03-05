@@ -4,55 +4,153 @@ using namespace vcl;
 
 
 
-
-void simulate(std::vector<particle_structure>& particles, float dt)
+void collision_sphere_plane(vcl::vec3& p, vcl::vec3& v, float r, vcl::vec3 const& n, vcl::vec3 const& p0)
 {
+    float const epsilon = 1e-5f;
+    float const alpha_n = 0.95f;  // attenuation normal
+    float const alpha_t = 0.90f;  // attenuation tangential
+
+    float const s = dot(p-p0,n) - r;
+    if( s<-epsilon )
+    {
+        vec3 const vn = dot(v,n) * n;
+        vec3 const vt = v - vn;
+
+        p = p - (s * n);
+        v = -alpha_n * vn + alpha_t * vt;
+    }
+}
+
+void collision_sphere_sphere(vcl::vec3& p1, vcl::vec3& v1, float r1, vcl::vec3& p2, vcl::vec3& v2, float r2)
+{
+    float const epsilon = 1e-5f;
+    float const alpha = 0.95f;
+
+    vec3 const p12 = p1-p2;
+    float const d12 = norm(p12);
+
+    if(d12 < r1+r2)
+    {
+        vec3 const u12 = p12/d12;
+        float const collision_depth = r1+r2-d12;
+
+        p1 += (collision_depth/2.0f+epsilon) * u12 ;
+        p2 -= (collision_depth/2.0f+epsilon) * u12 ;
+
+        if(norm(v1-v2)>0.2f){
+            float const j = dot(v1-v2,u12);
+            v1 = v1 - alpha*j*u12;
+            v2 = v2 + alpha*j*u12;
+        }
+        else // Contact
+        {
+            v1 = v1/1.2f;
+            v2 = v2/1.2f;
+        }
+
+    }
+}
+
+void simulate(std::vector<particle_structure>& particles, std::vector<mesh_drawable>& cups, float dt_true)
+{
+
 	vec3 const g = {0,0,-9.81f};
-    vec3 const n = {0,0,1};
-	size_t const N = particles.size();
-	float alpha = 0.9;
-    float beta = 0.9;
-	for (size_t k = 0; k < N; ++k)
+	size_t const N_substep = 10;
+	float const dt = dt_true/N_substep;
+	for(size_t k_substep=0; k_substep<N_substep; ++k_substep)
 	{
-		particle_structure& particle = particles[k];
+		size_t const N = particles.size();
+		for (size_t k = 0; k < N; ++k)
+		{
+			particle_structure& particle = particles[k];
 
-		vec3 const f = particle.m * g;
+			vec3 const f = particle.m * g;
 
-		particle.v = (1-0.9f*dt)*particle.v + dt*f;
-		if(particle.p[2] + dt*particle.v[2] >-1+particle.r) {
-            particle.p = particle.p + dt*particle.v;
-		}
-		else {
-            vec3 v_n = dot(particle.v,n) * n;
-            vec3 v_t = particle.v - v_n;
-            particle.v =  alpha*v_t - beta*v_n;
-            //particle.p = particle.p + dt*particle.v;
-            if(particle.p[2] <(-1+particle.r)){
-                particle.p[2] = -1+particle.r+0.01;
-            }
+			particle.v = (1-0.9f*dt)*particle.v + dt*f;
+			particle.p = particle.p + dt*particle.v;
 		}
 
-	}
+		// Collisions between spheres
+		for(size_t k1=0; k1<N; ++k1)
+		{
+			for(size_t k2=k1+1; k2<N; ++k2)
+			{
+				particle_structure& p1 = particles[k1];
+				particle_structure& p2 = particles[k2];
 
+				collision_sphere_sphere(p1.p,p1.v,p1.r, p2.p,p2.v,p2.r);
+			}
+		}
 
-    for (size_t i = 0; i < N; ++i) {
-        particle_structure &particle_1 = particles[i];
-        for (size_t j = i; j < N; ++j) {
-            particle_structure &particle_2 = particles[j];
+		// Collisions with cube
+		const std::vector<vec3> face_normal  = {{0, 1,0}, { 1,0,0}, {0,0, 1}, {0,-1,0}, {-1,0,0}, {0,0,-1}};
+		const std::vector<vec3> face_position = {{0,-1,0}, {-1,0,0}, {0,0,-1}, {0, 1,0}, { 1,0,0}, {0,0, 1}};
+		const size_t N_face = face_normal.size();
+		for(size_t k=0; k<N; ++k){
+			particle_structure& part = particles[k];
+			for(size_t k_face=0; k_face<N_face; ++k_face)
+				collision_sphere_plane(part.p, part.v, part.r, face_normal[k_face], face_position[k_face]);
+		}
 
-            float dist = norm(particle_1.p - particle_2.p);
+		// Collisions with cups (obstacles)
+//        vec3 cup1 = { 0, 0.15, -0.5};
+        float x0 = 0., y0 = 0.15, z0 = -1.04;
+        //rotation
+        mat3 rot = {
+                0, 0, 1,
+                0, 1, 0,
+                -1, 0, 0
+        };
+        for (size_t k = 0; k < N; ++k){
+            particle_structure& particle = particles[k];
+            float x = particle.p[0], y = particle.p[1], z = particle.p[2];
+            if((x0-x)*(x0-x) + (y0-y)*(y0-y) <= 0.2*0.2 && z>=-1.04 && z<=-1.04+0.55){ // collision detection
+//                std::cout << "Near cup\n";
+//                for(int i=0;i<cups[0].)
 
-            if(dist < particle_1.r + particle_2.r + 0.01 && norm(particle_2.p - particle_1.p) != 0.) {
-                //we have collistion
-                vec3 u = normalize(particle_2.p - particle_1.p);
-                float J = (2*particle_1.m*particle_2.m/(particle_1.m + particle_2.m)) *dot((particle_2.v - particle_1.v), u);
-                particle_1.v = particle_1.v + (J/particle_1.m)*u;
-                particle_2.v = particle_2.v - (J/particle_2.m)*u;
-                particle_2.p += abs(dist - particle_1.r - particle_2.r - 0.01)*u;
+                cups[0].transform.rotate = rotation(rot);
+                cups[0].transform.translate = {0,0,-0.93};
+
+//                particle.v = -particle.v;
+                // todo: handle the problem of popcorn being inside the cup
+                // todo: fix the problem cylinder being double-holed
+                // todo: change texture of cup
+                // todo: change pan texture
+
             }
         }
-    }
-        // To do :
-	//  Handle collision ...
-
+	}
 }
+
+
+void apply_constraints(std::vector<particle_structure>& popcorns, std::map<size_t, vec3> const& positional_constraints, obstacles_parameters const& obstacles)
+{
+    // Fixed positions of the cloth
+//    for(const auto& constraints : positional_constraints)
+//        position[constraints.first] = constraints.second;
+    const float epsilon = 5e-3f;
+    size_t const N = popcorns.size();
+    for (size_t k = 0; k < N; ++k)
+    {
+        particle_structure& popcorn = popcorns[k];
+        if(popcorn.p[2] < -1.02 + epsilon){ // todo: obstacles.z_ground
+                std::cout << "Inside if\n";
+                popcorn.p[2] = -100;
+        }
+    }
+
+    // To do: apply external constraints
+//    for(int i=0;i<popcorns.size();i++){
+//        if(popcorns[i].p[2] < obstacles.z_ground) {
+//            std::cout << "Inside if\n";
+//            popcorns[i].p[2] = -5;
+//        }
+
+
+
+        // float n = sqrt(position[i][0]*position[i][0]+position[i][1]*position[i][1]+position[i][2]*position[i][2]);
+//        if(norm(obstacles.sphere_center,position[i]) <= obstacles.sphere_radius+0.01){
+//            position[i] += abs(0.03+obstacles.sphere_radius-norm(obstacles.sphere_center,position[i]))*(position[i]-obstacles.sphere_center)/norm(position[i],obstacles.sphere_center);
+//        }
+}
+

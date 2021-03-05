@@ -27,15 +27,18 @@ struct scene_environment
 	mat4 projection;
 	vec3 light;
 };
+
+
 scene_environment scene;
 mesh_drawable table;
 mesh_drawable sphere;
 mesh_drawable pan;
 bool first_time = true;
+obstacles_parameters obstacles;
 std::vector<mesh_drawable> cups;
 
 //Parameters
-const vec3 pan_position = {-1,-1,-1};
+const vec3 pan_position = {-1,-1,-1.08};
 const double v_factor = 1.8;
 
 timer_event_periodic timer(0.5f);
@@ -59,7 +62,7 @@ int main(int, char* argv[])
 	int const width = 1280, height = 1024;
 	GLFWwindow* window = create_window(width, height);
 	window_size_callback(window, width, height);
-	std::cout << opengl_info_display() << std::endl;;
+	std::cout << opengl_info_display() << std::endl;
 
 	imgui_init(window);
 	glfwSetCursorPosCallback(window, mouse_move_callback);
@@ -93,20 +96,39 @@ int main(int, char* argv[])
 
 		if(user.gui.display_frame) draw(user.global_frame, scene);
 
-		emit_particle();
-		display_interface();
-		float const dt = 0.01f * timer.scale;
-		simulate(particles, dt);
-		display_scene();
+
+        emit_particle();
+        display_interface();
 
 
-		ImGui::End();
-		imgui_render_frame(window);
-		glfwSwapBuffers(window);
-		glfwPollEvents();
-	}
+        std::map<size_t,vec3> positional_constraints;
+//        bool run = true;
+//        if(run){
+            float const dt = 0.01f * timer.scale;
+//            size_t const N_substeps = 5;
+//            for(size_t k_substep=0; k_substep<N_substeps; ++k_substep){
+//                compute_forces(cloth.forces, cloth.position, cloth.velocity, cloth.normal, cloth.parameters, user.gui.wind_magnitude);
+//                numerical_integration(cloth.position, cloth.velocity, cloth.forces, m, dt);
+//                std::cout << "Called apply constraints\n";
+//            }
+        simulate(particles, cups, dt);
+//        }
+//        apply_constraints(particles, positional_constraints, obstacles); //  todo: precise whether per each user.gui.run or no
 
-	imgui_cleanup();
+        display_scene();
+
+
+        ImGui::End();
+        imgui_render_frame(window);
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+//    std::cout << "After finishing simulation\n";
+//    for(int i=0;i<particles.size();i++)
+//        std::cout << particles[i].p[2] << '\n';
+
+    imgui_cleanup();
 	glfwDestroyWindow(window);
 	glfwTerminate();
 
@@ -127,12 +149,12 @@ void emit_particle()
 		particle_structure particle;
 		//starting position
 		particle.p = pan_position;
-		particle.r = 0.09f;
+		particle.r = 0.045f;
 		particle.c = color_lut[int(rand_interval()*color_lut.size())];
 		particle.v = v;
-		particle.m = 1.0f; //
+		particle.m = 0.5f; //
 
-		particles.push_back(particle);
+        particles.push_back(particle);
 	}
 }
 
@@ -156,6 +178,8 @@ void initialize_data()
 	//sphere = mesh_drawable(mesh_primitive_sphere());
 	mesh popcorn = mesh_load_file_obj("assets/Rock.obj");
     sphere = mesh_drawable(popcorn);
+    sphere.texture = opengl_texture_to_gpu(image_load_png("assets/popcorn2.png"));
+//    sphere = mesh_drawable(mesh_primitive_sphere());
 
 
 	//Mesh
@@ -185,22 +209,24 @@ void initialize_data()
 
     //mesh_draw
     pan = mesh_drawable(pan_m);
+    pan.texture = opengl_texture_to_gpu(image_load_png("assets/pan.png"));
     table = mesh_drawable(table_m);
-    table.transform.translate = {-0.5,-0.5,-2.87};
+    table.transform.translate = {-0.5,-0.5,-2.93};
     pan.transform.translate = pan_position;
     table.texture = opengl_texture_to_gpu(image_load_png("assets/wood.png"));
 
-    for(int i=0;i<3;i++){
+    for(int i=0;i<1;i++){
 	    mesh_drawable cup = mesh_drawable(mesh_primitive_cylinder());
     	cups.push_back(cup);
-    	cups[i].texture = opengl_texture_to_gpu(image_load_png("assets/cup.png"));
+    	cups[i].texture = opengl_texture_to_gpu(image_load_png("assets/glass.png"));
    	}
-	cups[0].transform.translate = {0.7,0.7,-1};
-	cups[1].transform.translate = {-0.7,0.7,-1};
-	cups[2].transform.translate = {-0.7,-0.7,-1};
+	cups[0].transform.translate = {0, 0.15,-1.04};
+//    cups[1].transform.translate = {0,0.15,-1.54-0.05};
+//	cups[1].transform.translate = {-1.2,0.5,-1.04};
+//	cups[2].transform.translate = {-0.6,-0.5,-1.04};
 	cups[0].transform.scale = 0.5;
-	cups[1].transform.scale = 0.5;
-	cups[2].transform.scale = 0.5;
+//	cups[1].transform.scale = 0.5;
+//	cups[2].transform.scale = 0.5;
 }
 
 void display_scene()
@@ -214,7 +240,7 @@ void display_scene()
 		sphere.transform.scale = particle.r;
 		if(first_time){
             first_time = false;
-            sphere.texture = opengl_texture_to_gpu(image_load_png("assets/b_w.png"));
+//            sphere.texture = opengl_texture_to_gpu(image_load_png("assets/b_w.png"));
 		}
 
 		draw(sphere, scene);
