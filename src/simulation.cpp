@@ -3,7 +3,6 @@
 using namespace vcl;
 
 
-
 void collision_sphere_plane(vcl::vec3& p, vcl::vec3& v, float r, vcl::vec3 const& n, vcl::vec3 const& p0)
 {
     float const epsilon = 1e-5f;
@@ -47,11 +46,10 @@ void collision_sphere_sphere(vcl::vec3& p1, vcl::vec3& v1, float r1, vcl::vec3& 
             v1 = v1/1.2f;
             v2 = v2/1.2f;
         }
-
     }
 }
 
-void simulate(std::vector<particle_structure>& particles, std::vector<mesh_drawable>& cups, float dt_true)
+void simulate(std::vector<particle_structure>& particles, std::vector<Cup>& cups, float dt_true)
 {
 
 	vec3 const g = {0,0,-9.81f};
@@ -93,41 +91,48 @@ void simulate(std::vector<particle_structure>& particles, std::vector<mesh_drawa
 		}
 
 		// Collisions with cups (obstacles)
-//        vec3 cup1 = { 0, 0.15, -0.5};
-        float x0 = 0., y0 = 0.15, z0 = -1.04;
-        //rotation
+        // rotation
         mat3 rot = {
                 0, 0, 1,
                 0, 1, 0,
                 -1, 0, 0
         };
+
+        // todo: handle the problem of popcorn being inside the cup
+        // todo: add smoke effect
+
+        // todo: change the following code so that it becomes less redundant
+        float x0, y0, z0;
         for (size_t k = 0; k < N; ++k){
             particle_structure& particle = particles[k];
             float x = particle.p[0], y = particle.p[1], z = particle.p[2];
-            if((x0-x)*(x0-x) + (y0-y)*(y0-y) <= 0.2*0.2 && z>=-1.04 && z<=-1.04+0.55){ // collision detection
-//                std::cout << "Near cup\n";
-//                for(int i=0;i<cups[0].)
-
-                cups[0].transform.rotate = rotation(rot);
-                cups[0].transform.translate = {0,0,-0.93};
-
-//                particle.v = -particle.v;
-                // todo: handle the problem of popcorn being inside the cup
-                // todo: fix the problem cylinder being double-holed
-                // todo: change texture of cup
-                // todo: change pan texture
-
+            // cup 1
+            x0 = 0., y0 = 0.15, z0 = -1.04;
+            if((x0-x)*(x0-x) + (y0-y)*(y0-y) <= 0.2*0.2 && z>=z0 && z<=z0+0.55){ // collision detection
+                cups[0].body.transform.rotate = rotation(rot);
+                cups[0].body.transform.translate = {0,0.15,-0.92};
+                cups[0].seat.transform.rotate = rotation(rot);
+                cups[0].seat.transform.translate = {0,0.15,-0.92};
+            }
+            // cup 2
+            x0 = -0.6, y0 = -0.35, z0 = -1.04;
+            if((x0-x)*(x0-x) + (y0-y)*(y0-y) <= 0.2*0.2 && z>=z0 && z<=z0+0.55){ // collision detection
+                cups[1].body.transform.rotate = rotation(rot);
+                cups[1].body.transform.translate = {-0.6,-0.35,-0.92};
+                cups[1].seat.transform.rotate = rotation(rot);
+                cups[1].seat.transform.translate = {-0.6,-0.35,-0.92};
             }
         }
-	}
+        // particle.v = -particle.v;
+    }
 }
 
 
 void apply_constraints(std::vector<particle_structure>& popcorns, std::map<size_t, vec3> const& positional_constraints, obstacles_parameters const& obstacles)
 {
     // Fixed positions of the cloth
-//    for(const auto& constraints : positional_constraints)
-//        position[constraints.first] = constraints.second;
+    // for(const auto& constraints : positional_constraints)
+    //        position[constraints.first] = constraints.second;
     const float epsilon = 5e-3f;
     size_t const N = popcorns.size();
     for (size_t k = 0; k < N; ++k)
@@ -139,18 +144,18 @@ void apply_constraints(std::vector<particle_structure>& popcorns, std::map<size_
         }
     }
 
-    // To do: apply external constraints
-//    for(int i=0;i<popcorns.size();i++){
-//        if(popcorns[i].p[2] < obstacles.z_ground) {
-//            std::cout << "Inside if\n";
-//            popcorns[i].p[2] = -5;
-//        }
+/*
+     To do: apply external constraints
+     for(int i=0;i<popcorns.size();i++){
+         if(popcorns[i].p[2] < obstacles.z_ground) {
+             std::cout << "Inside if\n";
+             popcorns[i].p[2] = -5;
+         }
+     }
 
-
-
-        // float n = sqrt(position[i][0]*position[i][0]+position[i][1]*position[i][1]+position[i][2]*position[i][2]);
-//        if(norm(obstacles.sphere_center,position[i]) <= obstacles.sphere_radius+0.01){
-//            position[i] += abs(0.03+obstacles.sphere_radius-norm(obstacles.sphere_center,position[i]))*(position[i]-obstacles.sphere_center)/norm(position[i],obstacles.sphere_center);
-//        }
+     float n = sqrt(position[i][0]*position[i][0]+position[i][1]*position[i][1]+position[i][2]*position[i][2]);
+        if(norm(obstacles.sphere_center,position[i]) <= obstacles.sphere_radius+0.01){
+            position[i] += abs(0.03+obstacles.sphere_radius-norm(obstacles.sphere_center,position[i]))*(position[i]-obstacles.sphere_center)/norm(position[i],obstacles.sphere_center);
+        }
+*/
 }
-

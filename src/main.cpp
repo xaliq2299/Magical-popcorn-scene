@@ -35,9 +35,9 @@ mesh_drawable sphere;
 mesh_drawable pan;
 bool first_time = true;
 obstacles_parameters obstacles;
-std::vector<mesh_drawable> cups;
+std::vector<Cup> cups;
 
-//Parameters
+// Parameters
 const vec3 pan_position = {-1,-1,-1.08};
 const double v_factor = 1.8;
 
@@ -56,7 +56,6 @@ void emit_particle();
 
 int main(int, char* argv[])
 {
-
 	std::cout << "Run " << argv[0] << std::endl;
 
 	int const width = 1280, height = 1024;
@@ -70,7 +69,6 @@ int main(int, char* argv[])
 	
 	std::cout<<"Initialize data ..."<<std::endl;
 	initialize_data();
-
 
 	std::cout<<"Start animation loop ..."<<std::endl;
 	user.fps_record.start();
@@ -96,37 +94,22 @@ int main(int, char* argv[])
 
 		if(user.gui.display_frame) draw(user.global_frame, scene);
 
-
         emit_particle();
         display_interface();
 
-
         std::map<size_t,vec3> positional_constraints;
-//        bool run = true;
-//        if(run){
-            float const dt = 0.01f * timer.scale;
-//            size_t const N_substeps = 5;
-//            for(size_t k_substep=0; k_substep<N_substeps; ++k_substep){
-//                compute_forces(cloth.forces, cloth.position, cloth.velocity, cloth.normal, cloth.parameters, user.gui.wind_magnitude);
-//                numerical_integration(cloth.position, cloth.velocity, cloth.forces, m, dt);
-//                std::cout << "Called apply constraints\n";
-//            }
+        // bool run = true;
+        float const dt = 0.01f * timer.scale;
         simulate(particles, cups, dt);
-//        }
-//        apply_constraints(particles, positional_constraints, obstacles); //  todo: precise whether per each user.gui.run or no
+        // apply_constraints(particles, positional_constraints, obstacles); //  todo: precise whether per each user.gui.run or no
 
         display_scene();
-
 
         ImGui::End();
         imgui_render_frame(window);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-
-//    std::cout << "After finishing simulation\n";
-//    for(int i=0;i<particles.size();i++)
-//        std::cout << particles[i].p[2] << '\n';
 
     imgui_cleanup();
 	glfwDestroyWindow(window);
@@ -139,15 +122,15 @@ int main(int, char* argv[])
 void emit_particle()
 {
 	// Emit particle with random velocity
-	//  Assume first that all particles have the same radius and mass
+	// Assume first that all particles have the same radius and mass
 	static buffer<vec3> const color_lut = {{1,0,0},{0,1,0},{0,0,1},{1,1,0},{1,0,1},{0,1,1}};
 	if (timer.event && user.gui.add_sphere) {
 		float const theta = rand_interval(0, 2*pi);
 		vec3 v = vec3(1.0f*std::cos(theta), 1.0f*std::sin(theta), 4.0f);
-        //add speed
+        // add speed
 		v = v_factor*v;
 		particle_structure particle;
-		//starting position
+		// starting position
 		particle.p = pan_position;
 		particle.r = 0.045f;
 		particle.c = color_lut[int(rand_interval()*color_lut.size())];
@@ -174,19 +157,16 @@ void initialize_data()
 	scene.camera.distance_to_center = 2.5f;
 	scene.camera.look_at({5,5,5}, {0,0,0}, {0,0,2});
 
-	//popcorn
-	//sphere = mesh_drawable(mesh_primitive_sphere());
+	// popcorn
 	mesh popcorn = mesh_load_file_obj("assets/Rock.obj");
     sphere = mesh_drawable(popcorn);
     sphere.texture = opengl_texture_to_gpu(image_load_png("assets/popcorn2.png"));
-//    sphere = mesh_drawable(mesh_primitive_sphere());
 
-
-	//Mesh
+	// table and pan meshes
     mesh table_m = mesh_load_file_obj("assets/Wood_Table.obj");
     mesh pan_m = mesh_load_file_obj("assets/pan.obj");
 
-    //rotation
+    // rotation
     mat3 rot = {
             1.0,0,0,
             0,float(cos(1.5708)),-1*float(sin(1.5708)),
@@ -200,14 +180,11 @@ void initialize_data()
         table_m.position.at(i) = rot*table_m.position.at(i);
     }
 
-    //translation
-
-    //scaling
-    pan_m.position /=20;
+    // scaling
+    pan_m.position /= 20;
     table_m.position *= 4;
 
-
-    //mesh_draw
+    // mesh_draw
     pan = mesh_drawable(pan_m);
     pan.texture = opengl_texture_to_gpu(image_load_png("assets/pan.png"));
     table = mesh_drawable(table_m);
@@ -215,18 +192,19 @@ void initialize_data()
     pan.transform.translate = pan_position;
     table.texture = opengl_texture_to_gpu(image_load_png("assets/wood.png"));
 
-    for(int i=0;i<1;i++){
-	    mesh_drawable cup = mesh_drawable(mesh_primitive_cylinder());
+    for(int i=0;i<2;i++){
+        Cup cup;
+	    cup.body = mesh_drawable(mesh_primitive_cylinder(0.2f));
+        cup.seat = mesh_drawable(mesh_primitive_disc(0.2f));
     	cups.push_back(cup);
-    	cups[i].texture = opengl_texture_to_gpu(image_load_png("assets/glass.png"));
+        cups[i].body.texture = opengl_texture_to_gpu(image_load_png("assets/cup_body.png"));
+    	cups[i].seat.texture = opengl_texture_to_gpu(image_load_png("assets/cup_seat.png"));
    	}
-	cups[0].transform.translate = {0, 0.15,-1.04};
-//    cups[1].transform.translate = {0,0.15,-1.54-0.05};
-//	cups[1].transform.translate = {-1.2,0.5,-1.04};
-//	cups[2].transform.translate = {-0.6,-0.5,-1.04};
-	cups[0].transform.scale = 0.5;
-//	cups[1].transform.scale = 0.5;
-//	cups[2].transform.scale = 0.5;
+
+	cups[0].body.transform.translate = cups[0].seat.transform.translate = {0, 0.15, -1.04};
+    cups[1].body.transform.translate = cups[1].seat.transform.translate = {-0.6,-0.35,-1.04};
+    cups[0].body.transform.scale = cups[0].seat.transform.scale = 0.5;
+    cups[1].body.transform.scale = cups[1].seat.transform.scale = 0.5;
 }
 
 void display_scene()
@@ -240,15 +218,17 @@ void display_scene()
 		sphere.transform.scale = particle.r;
 		if(first_time){
             first_time = false;
-//            sphere.texture = opengl_texture_to_gpu(image_load_png("assets/b_w.png"));
+            // sphere.texture = opengl_texture_to_gpu(image_load_png("assets/b_w.png"));
 		}
 
 		draw(sphere, scene);
 	}
     draw(table, scene);
 	draw(pan, scene);
-    for(int i=0;i<cups.size();i++)
-	    draw(cups[i], scene);
+    for(int i=0;i<cups.size();i++) {
+        draw(cups[i].body, scene);
+        draw(cups[i].seat, scene);
+    }
 }
 
 
