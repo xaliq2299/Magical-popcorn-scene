@@ -160,7 +160,7 @@ void initialize_data()
 	// popcorn
 	mesh popcorn = mesh_load_file_obj("assets/Rock.obj");
     sphere = mesh_drawable(popcorn);
-    sphere.texture = opengl_texture_to_gpu(image_load_png("assets/popcorn2.png"));
+    sphere.texture = opengl_texture_to_gpu(image_load_png("assets/popcorn.png"));
 
 	// table and pan meshes
     mesh table_m = mesh_load_file_obj("assets/Wood_Table.obj");
@@ -218,7 +218,6 @@ void display_scene()
 		sphere.transform.scale = particle.r;
 		if(first_time){
             first_time = false;
-            // sphere.texture = opengl_texture_to_gpu(image_load_png("assets/b_w.png"));
 		}
 
 		draw(sphere, scene);
