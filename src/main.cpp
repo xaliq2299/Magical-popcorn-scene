@@ -14,6 +14,7 @@ struct gui_parameters {
 struct user_interaction_parameters {
 	vec2 mouse_prev;
 	timer_fps fps_record;
+    bool display_transparent_billboard = true;
 	mesh_drawable global_frame;
 	gui_parameters gui;
 	bool cursor_on_gui;
@@ -58,6 +59,9 @@ const double v_factor = 1.8;
 timer_event_periodic timer(0.5f);
 std::vector<particle_structure> particles;
 
+// vibrating popcorns
+std::vector<particle_structure> static_popcorns;
+
 
 void mouse_move_callback(GLFWwindow* window, double xpos, double ypos);
 void window_size_callback(GLFWwindow* window, int width, int height);
@@ -66,6 +70,39 @@ void initialize_data();
 void display_scene();
 void display_interface();
 void emit_particle();
+
+// smoke parameters
+struct particle_bubble
+{
+    vec3 p0;
+    float t0;
+    vec3 color;
+    float radius;
+    float phase;
+};
+
+struct particle_billboard
+{
+    vec3 p0;
+    float t0;
+};
+
+// Visual elements of the scene related to the
+mesh_drawable quad;   // used to display the sprites
+
+// smoke-related functions
+particle_bubble create_new_bubble(float t);
+vec3 compute_bubble_position(particle_bubble const& bubble, float t_current);
+particle_billboard create_new_billboard(float t);
+vec3 compute_billboard_position(particle_billboard const& billboard, float t_current);
+template <typename T> void remove_old_particles(std::vector<T>& particles, float t_current, float t_max);
+
+// Particles and their timer
+std::vector<particle_bubble> bubbles;
+timer_event_periodic timer_bubble(0.15f);
+std::vector<particle_billboard> billboards;
+timer_event_periodic timer_billboard(0.05f);
+
 
 
 int main(int, char* argv[])
@@ -272,7 +309,53 @@ void initialize_data()
     blueDisk2 = mesh_drawable(mesh_primitive_disc());
     blueDisk2.shading.color = {0,0,1};
 
+    // adding vibrating popcorns
+    for(int i=0;i<70;i++){
+        particle_structure particle;
+        // starting position
+        particle.p = pan_position;
+        particle.r = 0.045f;
+        particle.m = 0.5f;
+        static_popcorns.push_back(particle);
+    }
+
+    // Billboard texture and associated quadrange
+    GLuint const texture_billboard = opengl_texture_to_gpu(image_load_png("assets/smoke.png"));
+    float const L = 0.3f; // size of the quad
+    quad = mesh_drawable(mesh_primitive_quadrangle({-L,-L,0},{L,-L,0},{L,L,0},{-L,L,0}));
+    quad.texture = texture_billboard;
 }
+
+
+float RandomFloat(float a, float b) {
+    float random = ((float) rand()) / (float) RAND_MAX;
+    float diff = b - a;
+    float r = random * diff;
+    return a + r;
+}
+
+// Smoke: Billboards
+particle_billboard create_new_billboard(float t)
+{
+    particle_billboard billboard;
+    billboard.t0 = t;
+    float const theta  = rand_interval(0.0f, 2*pi);
+    billboard.p0 = 0.5f*vec3(std::cos(theta), 0.0f, std::sin(theta))-vec3(1,1.2,0.92);
+    return billboard;
+}
+
+vec3 compute_billboard_position(particle_billboard const& billboard, float t_current)
+{
+    float const t = t_current - billboard.t0;
+
+    float const theta = std::atan2(billboard.p0.x, billboard.p0.z);
+    float const x = t/2*std::sin(theta);
+    float const z = t/2*std::cos(theta);
+    float const y = -5*(t/3)*(t/3)+2.5f*(t/3);
+
+    return billboard.p0 + vec3(x,y,z);
+}
+
 
 void display_scene()
 {
@@ -332,7 +415,66 @@ void display_scene()
         blueDisk2.transform.scale = 0.1f;
         draw(blueDisk2, scene);
     }
+
+    // displating vibrating popcorns
+    // ADDING STATIC POPCORNS INSIDE THE PAN
+    for(int i=0;i<static_popcorns.size();i++) {
+        particle_structure const& particle = static_popcorns[i];
+//        sphere.shading.color = {1,1,1};
+//        sphere.transform.translate = {-1+x_shift*i,-1-y_shift*i,-0.92};
+//        sphere.transform.translate = { -1.12, -1.05, -0.92};
+//        sphere.transform.translate = {-0.9, -0.9, -0.92};
+        sphere.transform.translate = {RandomFloat(-0.9, -1.34), RandomFloat(-0.9, -1.2), -0.92};
+        sphere.transform.scale = particle.r;
+        draw(sphere, scene);
+    }
+
+    // smoke
+    timer_billboard.update();
+    if(timer_billboard.event)
+        billboards.push_back( create_new_billboard(timer_billboard.t) );
+    // Enable transparency using alpha blending (if display_transparent_billboard is true)
+    if(user.display_transparent_billboard){
+        glEnable(GL_BLEND);
+        glDepthMask(false);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
+    else
+        glDisable(GL_BLEND);
+
+    for(size_t k = 0; k < billboards.size(); ++k)
+    {
+        vec3 const p = compute_billboard_position(billboards[k], timer_billboard.t);
+        quad.transform.translate = p;
+        quad.transform.rotate = scene.camera.orientation();
+
+        float const alpha = (timer_billboard.t-billboards[k].t0)/3.0f;
+        quad.shading.alpha = (1-alpha)*std::sqrt(alpha);
+
+        draw(quad, scene);
+    }
+    glDepthMask(true);
+
+//    remove_old_particles(bubbles, timer_bubble.t, 3.0f);
+    remove_old_particles(billboards, timer_billboard.t, 3.0f);
+
+
 }
+
+
+// Generic function allowing to remove particles with a lifetime greater than t_max
+template <typename T>
+void remove_old_particles(std::vector<T>& particles, float t_current, float t_max)
+{
+    for (auto it = particles.begin(); it != particles.end();)
+    {
+        if (t_current - it->t0 > t_max)
+            it = particles.erase(it);
+        if(it!=particles.end())
+            ++it;
+    }
+}
+
 
 
 void display_interface()
