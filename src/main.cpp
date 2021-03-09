@@ -29,10 +29,24 @@ struct scene_environment
 };
 
 
+//SPH parameters
+bool animate = false;
+bool animate2 = false;
+sph_parameters_structure sph_parameters; // Physical parameter related to SPH
+buffer<sph_particle_element> sph_particles;      // Storage of the particles
+buffer<sph_particle_element> sph_particles2;
+mesh_drawable water_particle; // Sphere used to display a particle
+const vec3 shift = {0.3,0.2 ,-1};
+const vec3 shift2 = {-0.27,-0.4 ,-1};
+const vec3 insideCup =  { 0, 0.15, -0.65};
+const vec3 insideCup2 =  { -0.6,-0.35, -0.65};
+
 scene_environment scene;
 mesh_drawable table;
 mesh_drawable sphere;
 mesh_drawable pan;
+mesh_drawable blueDisk;
+mesh_drawable blueDisk2;
 bool first_time = true;
 obstacles_parameters obstacles;
 std::vector<Cup> cups;
@@ -100,16 +114,32 @@ int main(int, char* argv[])
         std::map<size_t,vec3> positional_constraints;
         // bool run = true;
         float const dt = 0.01f * timer.scale;
-        simulate(particles, cups, dt);
+        simulate(particles, cups, dt, animate, animate2);
         // apply_constraints(particles, positional_constraints, obstacles); //  todo: precise whether per each user.gui.run or no
 
         display_scene();
+
+        //SPH simulation
+        if(animate){
+            float const dt2 = 0.005f * timer.scale;
+            simulate(dt2, sph_particles, sph_parameters);
+        }
+
+        if(animate2) {
+            float const dt2 = 0.005f * timer.scale;
+            simulate(dt2, sph_particles2, sph_parameters);
+        }
+
 
         ImGui::End();
         imgui_render_frame(window);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    //SPH simulation
+    //float const dt2 = 0.005f * timer.scale;
+    //simulate(dt2, sph_particles, sph_parameters);
 
     imgui_cleanup();
 	glfwDestroyWindow(window);
@@ -139,6 +169,30 @@ void emit_particle()
 
         particles.push_back(particle);
 	}
+}
+
+
+void initialize_sph()
+{
+    // Initial particle spacing (relative to h)
+    float const c = 0.09f;//0.7f;
+    float h = sph_parameters.h;
+    h+=0.3f;
+    float z = 0.3f;
+    // Fill a square with particles
+    sph_particles.clear();
+    sph_particles2.clear();
+    for(float x=h; x<1.0f-h; x=x+c*h)
+    {
+        for(float y=-1.0f+h; y<1.0f-h; y=y+c*h)
+        {
+            sph_particle_element particle;
+            particle.p = {x+h/8.0*rand_interval(),y+h/8.0*rand_interval(),z+h/8.0*rand_interval()}; // a zero value in z position will lead to a 2D simulation
+            particle.p /= 5;
+            sph_particles.push_back(particle);
+            sph_particles2.push_back(particle);
+        }
+    }
 }
 
 
@@ -205,6 +259,19 @@ void initialize_data()
     cups[1].body.transform.translate = cups[1].seat.transform.translate = {-0.6,-0.35,-1.04};
     cups[0].body.transform.scale = cups[0].seat.transform.scale = 0.5;
     cups[1].body.transform.scale = cups[1].seat.transform.scale = 0.5;
+
+    //SPH initialize
+    initialize_sph();
+    water_particle = mesh_drawable(mesh_primitive_cube());
+    water_particle.transform.scale = 0.08f;
+    water_particle.shading.phong = {10, 0, 0};
+    water_particle.shading.color = {0, 0, 1};
+    blueDisk = mesh_drawable(mesh_primitive_disc());
+    blueDisk.shading.color = {0,0,1};
+
+    blueDisk2 = mesh_drawable(mesh_primitive_disc());
+    blueDisk2.shading.color = {0,0,1};
+
 }
 
 void display_scene()
@@ -227,6 +294,43 @@ void display_scene()
     for(int i=0;i<cups.size();i++) {
         draw(cups[i].body, scene);
         draw(cups[i].seat, scene);
+    }
+
+
+    //SPH display
+    //remove this to remove the spheres of the partices of fluid
+    if(animate){
+        for (size_t k = 0; k < sph_particles.size(); ++k) {
+            vec3 const& p = sph_particles[k].p;
+            water_particle.transform.translate = p + shift;
+            draw(water_particle, scene);
+        }
+    }
+    else {
+        /*vec3 const& p = sph_particles[0].p;
+        blueDisk.transform.translate = insideCup;*/
+
+        //water_particle.transform.scale = 0.2f;
+        blueDisk.transform.translate = insideCup;
+        blueDisk.transform.scale = 0.1f;
+        draw(blueDisk, scene);
+    }
+    //second cup
+    if(animate2){
+        for (size_t k = 0; k < sph_particles2.size(); ++k) {
+            vec3 const& p = sph_particles2[k].p;
+            water_particle.transform.translate = p + shift2;
+            draw(water_particle, scene);
+        }
+    }
+    else {
+        /*vec3 const& p = sph_particles[0].p;
+        blueDisk.transform.translate = insideCup;*/
+
+        //water_particle.transform.scale = 0.2f;
+        blueDisk2.transform.translate = insideCup2;
+        blueDisk2.transform.scale = 0.1f;
+        draw(blueDisk2, scene);
     }
 }
 
