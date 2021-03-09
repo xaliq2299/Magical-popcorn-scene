@@ -4,7 +4,8 @@ Computer Animation (INF585) project at L'X
 - [X] A more realistic table
 - [X] Cups on table
 - [X] Popcorn coming from pan
-- [ ] Adding fluids (SPH) for cups
-- [ ] Developing generic code for obstacles as a structure
-- [ ] Adding fire/smoke
-- [ ] Adding wind force
+- [X] Adding fluids (SPH) for cups
+- [X] Developing generic code for obstacles as a structure
+- [X] Adding fire/smoke
+- [ ] Popcorn texture
+- [ ] Spoon
