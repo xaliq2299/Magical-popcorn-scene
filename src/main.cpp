@@ -29,8 +29,7 @@ struct scene_environment
 	vec3 light;
 };
 
-
-//SPH parameters
+// SPH parameters
 bool animate = false;
 bool animate2 = false;
 sph_parameters_structure sph_parameters; // Physical parameter related to SPH
@@ -42,6 +41,7 @@ const vec3 shift2 = {-0.27,-0.4 ,-1};
 const vec3 insideCup =  { 0, 0.15, -0.65};
 const vec3 insideCup2 =  { -0.6,-0.35, -0.65};
 
+// Some scene elements and their parameters
 scene_environment scene;
 mesh_drawable table;
 mesh_drawable sphere;
@@ -49,27 +49,14 @@ mesh_drawable pan;
 mesh_drawable blueDisk;
 mesh_drawable blueDisk2;
 bool first_time = true;
-obstacles_parameters obstacles;
-std::vector<Cup> cups;
-
-// Parameters
 const vec3 pan_position = {-1,-1,-1.08};
+std::vector<Cup> cups;
+std::vector<particle_structure> vibrating_popcorns; // vibrating popcorns
 const double v_factor = 1.8;
-
-timer_event_periodic timer(0.5f);
 std::vector<particle_structure> particles;
 
-// vibrating popcorns
-std::vector<particle_structure> static_popcorns;
+timer_event_periodic timer(0.5f);
 
-
-void mouse_move_callback(GLFWwindow* window, double xpos, double ypos);
-void window_size_callback(GLFWwindow* window, int width, int height);
-
-void initialize_data();
-void display_scene();
-void display_interface();
-void emit_particle();
 
 // smoke parameters
 struct particle_bubble
@@ -80,19 +67,15 @@ struct particle_bubble
     float radius;
     float phase;
 };
-
 struct particle_billboard
 {
     vec3 p0;
     float t0;
 };
-
 // Visual elements of the scene related to the
 mesh_drawable quad;   // used to display the sprites
 
 // smoke-related functions
-particle_bubble create_new_bubble(float t);
-vec3 compute_bubble_position(particle_bubble const& bubble, float t_current);
 particle_billboard create_new_billboard(float t);
 vec3 compute_billboard_position(particle_billboard const& billboard, float t_current);
 template <typename T> void remove_old_particles(std::vector<T>& particles, float t_current, float t_max);
@@ -103,6 +86,13 @@ timer_event_periodic timer_bubble(0.15f);
 std::vector<particle_billboard> billboards;
 timer_event_periodic timer_billboard(0.05f);
 
+// some functionalities
+void mouse_move_callback(GLFWwindow* window, double xpos, double ypos);
+void window_size_callback(GLFWwindow* window, int width, int height);
+void initialize_data();
+void display_scene();
+void display_interface();
+void emit_particle();
 
 
 int main(int, char* argv[])
@@ -149,14 +139,11 @@ int main(int, char* argv[])
         display_interface();
 
         std::map<size_t,vec3> positional_constraints;
-        // bool run = true;
         float const dt = 0.01f * timer.scale;
         simulate(particles, cups, dt, animate, animate2);
-        // apply_constraints(particles, positional_constraints, obstacles); //  todo: precise whether per each user.gui.run or no
-
         display_scene();
 
-        //SPH simulation
+        // SPH simulation
         if(animate){
             float const dt2 = 0.005f * timer.scale;
             simulate(dt2, sph_particles, sph_parameters);
@@ -167,16 +154,11 @@ int main(int, char* argv[])
             simulate(dt2, sph_particles2, sph_parameters);
         }
 
-
         ImGui::End();
         imgui_render_frame(window);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-
-    //SPH simulation
-    //float const dt2 = 0.005f * timer.scale;
-    //simulate(dt2, sph_particles, sph_parameters);
 
     imgui_cleanup();
 	glfwDestroyWindow(window);
@@ -283,6 +265,7 @@ void initialize_data()
     pan.transform.translate = pan_position;
     table.texture = opengl_texture_to_gpu(image_load_png("assets/wood.png"));
 
+    // cups
     for(int i=0;i<2;i++){
         Cup cup;
 	    cup.body = mesh_drawable(mesh_primitive_cylinder(0.2f));
@@ -291,13 +274,22 @@ void initialize_data()
         cups[i].body.texture = opengl_texture_to_gpu(image_load_png("assets/cup_body.png"));
     	cups[i].seat.texture = opengl_texture_to_gpu(image_load_png("assets/cup_seat.png"));
    	}
-
 	cups[0].body.transform.translate = cups[0].seat.transform.translate = {0, 0.15, -1.04};
     cups[1].body.transform.translate = cups[1].seat.transform.translate = {-0.6,-0.35,-1.04};
     cups[0].body.transform.scale = cups[0].seat.transform.scale = 0.5;
     cups[1].body.transform.scale = cups[1].seat.transform.scale = 0.5;
 
-    //SPH initialize
+    // adding vibrating popcorns
+    for(int i=0;i<70;i++){
+        particle_structure particle;
+        // starting position
+        particle.p = pan_position;
+        particle.r = 0.045f;
+        particle.m = 0.5f;
+        vibrating_popcorns.push_back(particle);
+    }
+
+    // SPH initialize
     initialize_sph();
     water_particle = mesh_drawable(mesh_primitive_cube());
     water_particle.transform.scale = 0.08f;
@@ -309,17 +301,7 @@ void initialize_data()
     blueDisk2 = mesh_drawable(mesh_primitive_disc());
     blueDisk2.shading.color = {0,0,1};
 
-    // adding vibrating popcorns
-    for(int i=0;i<70;i++){
-        particle_structure particle;
-        // starting position
-        particle.p = pan_position;
-        particle.r = 0.045f;
-        particle.m = 0.5f;
-        static_popcorns.push_back(particle);
-    }
-
-    // Billboard texture and associated quadrange
+    // Smoke: billboard texture and associated quadrangle
     GLuint const texture_billboard = opengl_texture_to_gpu(image_load_png("assets/smoke.png"));
     float const L = 0.3f; // size of the quad
     quad = mesh_drawable(mesh_primitive_quadrangle({-L,-L,0},{L,-L,0},{L,L,0},{-L,L,0}));
@@ -359,6 +341,7 @@ vec3 compute_billboard_position(particle_billboard const& billboard, float t_cur
 
 void display_scene()
 {
+    // displaying the popcorns going out from the pan
 	size_t const N = particles.size();
 	for(size_t k=0; k<N; ++k)
 	{
@@ -372,16 +355,25 @@ void display_scene()
 
 		draw(sphere, scene);
 	}
-    draw(table, scene);
-	draw(pan, scene);
+
+    // displaying vibrating popcorns
+    for(int i=0;i<vibrating_popcorns.size();i++) {
+        particle_structure const& particle = vibrating_popcorns[i];
+        sphere.transform.translate = {RandomFloat(-0.9, -1.34), RandomFloat(-0.9, -1.2), -0.92};
+        sphere.transform.scale = particle.r;
+        draw(sphere, scene);
+    }
+
+    draw(table, scene); // displaying table
+	draw(pan, scene); // displaying pan
+	// displaying cups
     for(int i=0;i<cups.size();i++) {
         draw(cups[i].body, scene);
         draw(cups[i].seat, scene);
     }
 
-
-    //SPH display
-    //remove this to remove the spheres of the partices of fluid
+    // SPH display
+    // remove this to remove the spheres of the particles of fluid
     if(animate){
         for (size_t k = 0; k < sph_particles.size(); ++k) {
             vec3 const& p = sph_particles[k].p;
@@ -390,15 +382,12 @@ void display_scene()
         }
     }
     else {
-        /*vec3 const& p = sph_particles[0].p;
-        blueDisk.transform.translate = insideCup;*/
-
-        //water_particle.transform.scale = 0.2f;
         blueDisk.transform.translate = insideCup;
         blueDisk.transform.scale = 0.1f;
         draw(blueDisk, scene);
     }
-    //second cup
+
+    // for the second cup
     if(animate2){
         for (size_t k = 0; k < sph_particles2.size(); ++k) {
             vec3 const& p = sph_particles2[k].p;
@@ -407,29 +396,12 @@ void display_scene()
         }
     }
     else {
-        /*vec3 const& p = sph_particles[0].p;
-        blueDisk.transform.translate = insideCup;*/
-
-        //water_particle.transform.scale = 0.2f;
         blueDisk2.transform.translate = insideCup2;
         blueDisk2.transform.scale = 0.1f;
         draw(blueDisk2, scene);
     }
 
-    // displating vibrating popcorns
-    // ADDING STATIC POPCORNS INSIDE THE PAN
-    for(int i=0;i<static_popcorns.size();i++) {
-        particle_structure const& particle = static_popcorns[i];
-//        sphere.shading.color = {1,1,1};
-//        sphere.transform.translate = {-1+x_shift*i,-1-y_shift*i,-0.92};
-//        sphere.transform.translate = { -1.12, -1.05, -0.92};
-//        sphere.transform.translate = {-0.9, -0.9, -0.92};
-        sphere.transform.translate = {RandomFloat(-0.9, -1.34), RandomFloat(-0.9, -1.2), -0.92};
-        sphere.transform.scale = particle.r;
-        draw(sphere, scene);
-    }
-
-    // smoke
+    // Smoke
     timer_billboard.update();
     if(timer_billboard.event)
         billboards.push_back( create_new_billboard(timer_billboard.t) );
@@ -454,11 +426,7 @@ void display_scene()
         draw(quad, scene);
     }
     glDepthMask(true);
-
-//    remove_old_particles(bubbles, timer_bubble.t, 3.0f);
     remove_old_particles(billboards, timer_billboard.t, 3.0f);
-
-
 }
 
 
@@ -476,7 +444,6 @@ void remove_old_particles(std::vector<T>& particles, float t_current, float t_ma
 }
 
 
-
 void display_interface()
 {
 	ImGui::Checkbox("Frame", &user.gui.display_frame);
@@ -485,14 +452,12 @@ void display_interface()
     ImGui::Checkbox("Add sphere", &user.gui.add_sphere);
 }
 
-
 void window_size_callback(GLFWwindow* , int width, int height)
 {
 	glViewport(0, 0, width, height);
 	float const aspect = width / static_cast<float>(height);
 	scene.projection = projection_perspective(50.0f*pi/180.0f, aspect, 0.1f, 100.0f);
 }
-
 
 void mouse_move_callback(GLFWwindow* window, double xpos, double ypos)
 {
@@ -519,6 +484,4 @@ void opengl_uniform(GLuint shader, scene_environment const& current_scene)
 	opengl_uniform(shader, "view", scene.camera.matrix_view());
 	opengl_uniform(shader, "light", scene.light, false);
 }
-
-
 

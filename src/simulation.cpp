@@ -51,7 +51,6 @@ void collision_sphere_sphere(vcl::vec3& p1, vcl::vec3& v1, float r1, vcl::vec3& 
 
 void simulate(std::vector<particle_structure>& particles, std::vector<Cup>& cups, float dt_true, bool &animate, bool &animate2)
 {
-
 	vec3 const g = {0,0,-9.81f};
 	size_t const N_substep = 10;
 	float const dt = dt_true/N_substep;
@@ -80,7 +79,7 @@ void simulate(std::vector<particle_structure>& particles, std::vector<Cup>& cups
 			}
 		}
 
-		// Collisions with cube
+		// Collisions with plane
 		const std::vector<vec3> face_normal  = {{0, 1,0}, { 1,0,0}, {0,0, 1}, {0,-1,0}, {-1,0,0}, {0,0,-1}};
 		const std::vector<vec3> face_position = {{0,-1,0}, {-1,0,0}, {0,0,-1}, {0, 1,0}, { 1,0,0}, {0,0, 1}};
 		const size_t N_face = face_normal.size();
@@ -90,18 +89,19 @@ void simulate(std::vector<particle_structure>& particles, std::vector<Cup>& cups
 				collision_sphere_plane(part.p, part.v, part.r, face_normal[k_face], face_position[k_face]);
 		}
 
-		// Collisions with cups (obstacles)
-        // rotation
-        mat3 rot = {
+		// Collisions with cups
+		mat3 rot_diag = {
+                0, 0, 1,
+                1, 1, 0,
+                -1, 0, 0
+        };
+
+        mat3 rot_x = {
                 0, 0, 1,
                 0, 1, 0,
                 -1, 0, 0
         };
 
-        // todo: handle the problem of popcorn being inside the cup
-        // todo: add smoke effect
-
-        // todo: change the following code so that it becomes less redundant
         float x0, y0, z0;
         for (size_t k = 0; k < N; ++k){
             particle_structure& particle = particles[k];
@@ -109,59 +109,27 @@ void simulate(std::vector<particle_structure>& particles, std::vector<Cup>& cups
             // cup 1
             x0 = 0., y0 = 0.15, z0 = -1.04;
             if((x0-x)*(x0-x) + (y0-y)*(y0-y) <= 0.2*0.2 && z>=z0 && z<=z0+0.55){ // collision detection
-                cups[0].body.transform.rotate = rotation(rot);
+                cups[0].body.transform.rotate = rotation(rot_diag);
                 cups[0].body.transform.translate = {0,0.15,-0.92};
-                cups[0].seat.transform.rotate = rotation(rot);
+                cups[0].seat.transform.rotate = rotation(rot_diag);
                 cups[0].seat.transform.translate = {0,0.15,-0.92};
                 animate = true;
             }
             // cup 2
             x0 = -0.6, y0 = -0.35, z0 = -1.04;
             if((x0-x)*(x0-x) + (y0-y)*(y0-y) <= 0.2*0.2 && z>=z0 && z<=z0+0.55){ // collision detection
-                cups[1].body.transform.rotate = rotation(rot);
+                cups[1].body.transform.rotate = rotation(rot_x);
                 cups[1].body.transform.translate = {-0.6,-0.35,-0.92};
-                cups[1].seat.transform.rotate = rotation(rot);
+                cups[1].seat.transform.rotate = rotation(rot_x);
                 cups[1].seat.transform.translate = {-0.6,-0.35,-0.92};
                 animate2 = true;
             }
         }
-        // particle.v = -particle.v;
     }
 }
 
 
-void apply_constraints(std::vector<particle_structure>& popcorns, std::map<size_t, vec3> const& positional_constraints, obstacles_parameters const& obstacles) {
-    // Fixed positions of the cloth
-    // for(const auto& constraints : positional_constraints)
-    //        position[constraints.first] = constraints.second;
-    const float epsilon = 5e-3f;
-    size_t const N = popcorns.size();
-    for (size_t k = 0; k < N; ++k) {
-        particle_structure &popcorn = popcorns[k];
-        if (popcorn.p[2] < -1.02 + epsilon) { // todo: obstacles.z_ground
-            std::cout << "Inside if\n";
-            popcorn.p[2] = -100;
-        }
-    }
-
-/*
-     To do: apply external constraints
-     for(int i=0;i<popcorns.size();i++){
-         if(popcorns[i].p[2] < obstacles.z_ground) {
-             std::cout << "Inside if\n";
-             popcorns[i].p[2] = -5;
-         }
-     }
-
-     float n = sqrt(position[i][0]*position[i][0]+position[i][1]*position[i][1]+position[i][2]*position[i][2]);
-        if(norm(obstacles.sphere_center,position[i]) <= obstacles.sphere_radius+0.01){
-            position[i] += abs(0.03+obstacles.sphere_radius-norm(obstacles.sphere_center,position[i]))*(position[i]-obstacles.sphere_center)/norm(position[i],obstacles.sphere_center);
-        }
-*/
-
-}
-
-//SPH simulation
+// SPH simulation
 
 // Convert a density value to a pressure
 float density_to_pressure(float rho, float rho0, float stiffness) {
@@ -204,8 +172,6 @@ void update_density(buffer<sph_particle_element> &particles, float h, float m) {
                 particles[i].rho += m * W_density(pi, pj, h);
         }
     }
-
-
 }
 
 // Convert the particle density to pressure
@@ -248,7 +214,6 @@ void update_force(buffer<sph_particle_element> &particles, float h, float m, flo
                         -m / rho_i * (pressure_i + pressure_j) / (2 * rho_j) * W_gradient_pressure(pi, pj, h);
                 force_viscosity = nu * m * m * (vj - vi) / rho_j * W_laplacian_viscosity(pi, pj, h);
 
-
                 particles[i].f += force_pressure / 20 + force_viscosity / 20;
             }
 
@@ -257,7 +222,7 @@ void update_force(buffer<sph_particle_element> &particles, float h, float m, flo
 }
 
 
-//Simulate SPH
+// Simulate SPH
 void simulate(float dt, buffer<sph_particle_element> &particles, sph_parameters_structure const &sph_parameters) {
 
     // Update values
@@ -274,7 +239,6 @@ void simulate(float dt, buffer<sph_particle_element> &particles, sph_parameters_
         vec3 &p = particles[k].p;
         vec3 &v = particles[k].v;
         vec3 &f = particles[k].f;
-        //std::cout<<"force: "<<f<<"\n";
 
         v = (1 - damping) * v + dt * f / m;
         p = p + dt * v;
@@ -309,7 +273,4 @@ void simulate(float dt, buffer<sph_particle_element> &particles, sph_parameters_
             v.z *= -0.5f;
         }
     }
-
-
 }
-

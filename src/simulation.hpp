@@ -3,6 +3,7 @@
 #include "vcl/vcl.hpp"
 using namespace vcl;
 
+// Particle structure used for popcorns
 struct particle_structure
 {
     vcl::vec3 p; // Position
@@ -12,17 +13,10 @@ struct particle_structure
     float m;     // mass
 };
 
+// Structure of our cup = body (cylinder) + seat (circle)
 struct Cup{
     mesh_drawable body;
     mesh_drawable seat;
-};
-
-struct obstacles_parameters
-{
-    // float z_ground = -2.87; // todo: do we need table's z coordinate as an obstacle?
-    vec3 cup1 = { 0, 0.15, -0.5};
-    vec3 cup2 = { -1.2, 0.5, -0.5};
-    vec3 cup3 = { -0.6, -0.5, -0.5};
 };
 
 // SPH Particle
@@ -59,11 +53,5 @@ struct sph_parameters_structure
 
 };
 
-
-
-
-void apply_constraints(std::vector<particle_structure>& popcorns, std::vector<mesh_drawable> cups, std::map<size_t, vec3> const& positional_constraints, obstacles_parameters const& obstacles);
 void simulate(std::vector<particle_structure>& particles, std::vector<Cup>& cups, float dt, bool &animate, bool &animate2);
-
-//sph
-void simulate(float dt, vcl::buffer<sph_particle_element>& particles, sph_parameters_structure const& sph_parameters);
+void simulate(float dt, vcl::buffer<sph_particle_element>& particles, sph_parameters_structure const& sph_parameters); // SPH
