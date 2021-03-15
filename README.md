@@ -7,5 +7,6 @@ Computer Animation (INF585) project at L'X
 - [X] Adding fluids (SPH) for cups
 - [X] Developing generic code for obstacles as a structure
 - [X] Adding fire/smoke
-- [ ] Popcorn texture
-- [ ] Spoon
+- [X] Popcorn texture
+- [ ] Handle the problem of popcorn being inside the cup
+- [ ] dont forget to write instructions to run the code, mention the vcl library path as well
