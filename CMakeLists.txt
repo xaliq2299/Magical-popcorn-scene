@@ -7,7 +7,7 @@ file(GLOB_RECURSE src_files ${CMAKE_CURRENT_LIST_DIR}/src/*.[ch]pp)
 
 # Generate the executable_name from the current directory name
 #get_filename_component(executable_name ${CMAKE_CURRENT_LIST_DIR} NAME)
-set(executable_name magical__popcorn) 
+set(executable_name magical_popcorn) 
 # Another possibility is to set your own name: set(executable_name your_own_name) 
 message(STATUS "Configure steps to build executable file [${executable_name}]")
 project(${executable_name})

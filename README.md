@@ -30,4 +30,4 @@ Computer Animation (INF585) project at L'X under the supervision of Professor Da
 
 > cd . .
 
-> ./build/magical__popcorn
+> ./build/magical_popcorn
