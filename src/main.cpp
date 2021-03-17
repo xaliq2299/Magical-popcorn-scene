@@ -36,7 +36,9 @@ sph_parameters_structure sph_parameters; // Physical parameter related to SPH
 buffer<sph_particle_element> sph_particles;      // Storage of the particles
 buffer<sph_particle_element> sph_particles2;
 mesh_drawable water_particle; // Sphere used to display a particle
-const vec3 shift = {0.3,0.2 ,-1};
+
+const vec3 shift = {0.4,0.3 ,-1};
+//const vec3 shift = {0.3,0.2 ,-1};
 const vec3 shift2 = {-0.27,-0.4 ,-1};
 const vec3 insideCup =  { 0, 0.15, -0.65};
 const vec3 insideCup2 =  { -0.6,-0.35, -0.65};
