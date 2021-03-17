@@ -1,5 +1,5 @@
 # Wood-ball-bouncer
-Computer Animation (INF585) project at L'X
+Computer Animation (INF585) project at L'X under the supervision of Professor Damien Rohmer
 - [X] Smaller balls with popcorn texture
 - [X] A more realistic table
 - [X] Cups on table
@@ -8,5 +8,12 @@ Computer Animation (INF585) project at L'X
 - [X] Developing generic code for obstacles as a structure
 - [X] Adding fire/smoke
 - [X] Popcorn texture
-- [ ] Handle the problem of popcorn being inside the cup
-- [ ] dont forget to write instructions to run the code, mention the vcl library path as well
+
+
+
+# Setup
+
+Clone the repo and add the VCL library in the same directory of the github clonned folder.
+
+create a build directory near the src folder and cmake the cmakelist. make the file and run the executable that should be named ./magical_popcorn 
+
