@@ -19,13 +19,15 @@ Computer Animation (INF585) project at L'X under the supervision of Professor Da
  - Make sure cmake is installed and run the following commands on your terminal
 
 > cd Magical-popcorn-scene/
+
 > mkdir build
+
 > cd build/
+
 > cmake . ./ 
+
 > make.
+
 > cd . .
+
 > ./build/magical__popcorn
-
-
-  
-
