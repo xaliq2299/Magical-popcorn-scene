@@ -26,7 +26,7 @@ Computer Animation (INF585) project at L'X under the supervision of Professor Da
 
 > cmake . ./ 
 
-> make.
+> make
 
 > cd . .
 
