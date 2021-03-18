@@ -74,7 +74,7 @@ struct particle_billboard
     vec3 p0;
     float t0;
 };
-// Visual elements of the scene related to the
+// Visual elements of the scene related to the billboard/smoke
 mesh_drawable quad;   // used to display the sprites
 
 // smoke-related functions

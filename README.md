@@ -6,7 +6,6 @@ Computer Animation (INF585) project at L'X under the supervision of Professor Da
 - [X] Cups on table
 - [X] Popcorn coming from pan
 - [X] Adding fluids (SPH) for cups
-- [X] Developing generic code for obstacles as a structure
 - [X] Adding fire/smoke
 - [X] Popcorn texture
 
